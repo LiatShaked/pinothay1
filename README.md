@@ -1,20 +1,109 @@
-מפת פינות החי בישראל – הוראות העלאה ל-GitHub Pages
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>מפת פינות החי בישראל</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{--navy:#073763;--blue:#0f5f9d;--sea:#8fc9ea;--panel:#f7fbff;--border:#8fb0c9;--line:#063b69;--land:#fff;--hi:#b9dfef}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:#eef7fd;color:#123b5c}
+.app{display:grid;grid-template-columns:365px minmax(0,1fr);min-height:100vh}.side{background:var(--panel);border-left:1px solid var(--border);padding:15px;overflow:auto;z-index:3000}
+.title{font-size:24px;font-weight:800;color:var(--navy);line-height:1.15}.subtitle{font-size:13px;line-height:1.5;color:#4a687e;margin:5px 0 13px}
+.section{background:#fff;border:1px solid #a9c3d7;border-radius:14px;padding:12px;margin-bottom:11px}label{display:block;font-size:13px;font-weight:700;margin:8px 0 5px}
+input,select,textarea,button{font:inherit}input,select,textarea{width:100%;border:1px solid #7ea3bf;border-radius:9px;padding:9px;background:#fff;color:#123b5c}textarea{resize:vertical}
+button{border:1px solid #6f94b0;border-radius:9px;padding:9px 10px;background:#e2eff8;color:#103f63;font-weight:700;cursor:pointer}button:hover{background:#cfe4f2}.primary{background:var(--blue);color:#fff;border-color:var(--blue)}.primary:hover{background:#0c568b}.danger{background:#fff2f2;color:#8e3a3a;border-color:#d6a0a0}
+.row{display:flex;gap:7px}.row>*{flex:1}.small{font-size:12px;color:#55748a;line-height:1.45}.status{font-size:13px;line-height:1.45;background:#e7f3fb;border:1px solid #a8c5da;padding:8px;border-radius:9px;margin-top:8px}
+.results{display:grid;gap:5px;margin-top:7px;max-height:220px;overflow:auto}.result{text-align:right;background:#fff}.count{font-size:12px;color:#55748a;margin-top:5px}.records{max-height:330px;overflow:auto}.record{border-top:1px solid #d6e3ed;padding:9px 0}.record:first-child{border-top:0}.record-title{font-weight:800}
+.badge{display:inline-block;padding:2px 7px;border-radius:999px;background:#e5f2fa;font-size:11px}.empty{padding:14px 5px;text-align:center;color:#688398;font-size:13px}
+.map-wrap{position:relative;background:var(--sea);overflow:hidden}.map-head{position:absolute;z-index:1000;top:12px;left:12px;background:#ffffffee;border:1px solid #91aec4;border-radius:11px;padding:9px 11px;font-size:12px;color:#294f68;max-width:420px;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+#map{height:100vh;min-height:720px;background:var(--sea)}.leaflet-container{background:var(--sea);font-family:Arial,"Segoe UI",sans-serif}
+.town-tip{background:#fff!important;border:2px solid #073763!important;color:#052e52!important;font-weight:800!important;box-shadow:0 2px 8px rgba(0,0,0,.2)!important}.town-tip:before{display:none!important}
+.pet-icon{width:34px;height:34px;border-radius:50%;background:#fff;border:3px solid #0b708a;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 7px rgba(0,0,0,.2)}.pet-icon.selected{background:#8bc3e5;border-color:#052d53}
+.dialog-wrap{display:none;position:fixed;inset:0;background:rgba(5,34,58,.38);z-index:5000;align-items:center;justify-content:center}.dialog-wrap.open{display:flex}.dialog{width:min(94vw,500px);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;border:1px solid #8daec6;box-shadow:0 10px 35px rgba(0,0,0,.25);padding:17px}.dialog h2{margin:0 0 8px;color:var(--navy)}.close{float:left;background:#fff;border:0;font-size:23px;padding:0 4px;color:#557}
+.legend{position:absolute;z-index:1000;bottom:14px;left:14px;background:#ffffffee;border:1px solid #91aec4;border-radius:11px;padding:9px 11px;font-size:12px;color:#294f68}.legend-row{display:flex;gap:7px;align-items:center;margin:4px 0}.legend-box{width:20px;height:13px;background:#fff;border:2px solid #073763}.legend-yosh{background:#d8edf8!important;border-color:#086087!important}
+@media(max-width:900px){.app{grid-template-columns:1fr}.side{border-left:0;border-bottom:1px solid var(--border)}#map{height:68vh;min-height:560px}}
+</style>
+</head>
+<body>
+<div class="app"><aside class="side">
+<div class="title">🐾 מפת פינות החי בישראל</div>
+<div class="subtitle">גבולות יישובים ורשויות בישראל, וכן יישובים ישראליים ביהודה ושומרון. שמות מופיעים רק בריחוף או בלחיצה.</div>
+<div class="section"><label for="search">🔎 חיפוש יישוב או פינת חי</label><input id="search" placeholder="למשל: חיפה, כרמיאל, אפרת..." autocomplete="off"><div id="results" class="results"></div><div id="status" class="status">המפה נפתחת עכשיו. הגבולות נטענים ברקע.</div></div>
+<div class="section"><div class="row"><button id="fitBtn" type="button">🇮🇱 כל הארץ</button><button id="showYoshBtn" type="button">יהודה ושומרון</button></div></div>
+<div class="section"><div class="row"><button id="addBtn" class="primary" type="button">➕ הוספת פינת חי</button><button id="clearBtn" type="button">נקה בחירה</button></div><div id="selectedBox" class="status">לחצי על יישוב או על 🐾 כדי לבחור.</div></div>
+<div class="section"><div style="font-weight:800">📋 פינות החי שלי</div><div id="recordCount" class="count">0 רשומות</div><div id="records" class="records"></div><div class="row" style="margin-top:10px"><button id="exportBtn">⬇️ JSON</button><button id="exportXlsxBtn">📊 Excel</button></div><div class="row" style="margin-top:7px"><label style="margin:0"><span style="display:block;text-align:center;border:1px solid #6f94b0;border-radius:9px;padding:9px;background:#e2eff8;cursor:pointer;font-weight:700">⬆️ ייבוא JSON</span><input id="importJson" type="file" accept="application/json,.json" style="display:none"></label><label style="margin:0"><span style="display:block;text-align:center;border:1px solid #6f94b0;border-radius:9px;padding:9px;background:#e2eff8;cursor:pointer;font-weight:700">⬆️ ייבוא Excel</span><input id="importXlsx" type="file" accept=".xlsx,.xls,.csv" style="display:none"></label></div></div>
+<div class="section"><div class="small"><strong>שמירה:</strong> הנתונים נשמרים בדפדפן וניתנים לייצוא. הקובץ לא דורש localhost או BAT.</div></div>
+</aside><main class="map-wrap"><div class="map-head"><strong>מפה כחולה ונקייה</strong><br>גבולות כהים. שמות יישובים רק בריחוף/לחיצה. 🐾 מציגות את פינות החי.</div><div id="map"></div><div class="legend"><div class="legend-row"><span class="legend-box"></span> גבולות יישובים בישראל</div><div class="legend-row"><span class="legend-box legend-yosh"></span> יישובים ישראליים ביהודה ושומרון</div><div class="legend-row"><span style="font-size:20px">🐾</span> פינת חי</div></div></main></div>
+<div id="modal" class="dialog-wrap"><div class="dialog"><button id="closeBtn" class="close" type="button">×</button><h2 id="dlgTitle">הוספת פינת חי</h2><div id="townForForm" class="small"></div><label>שם פינת החי<input id="name"></label><label>סוג המקום<select id="kind"><option>פינת חי</option><option>חווה חינוכית</option><option>חווה טיפולית</option><option>משק / מרכז מבקרים</option><option>גן חיות</option><option>אחר</option></select></label><label>בעלי חיים<input id="animals"></label><label>כתובת<input id="address"></label><label>טלפון / אתר<input id="contact"></label><label>הערות<textarea id="notes" rows="4"></textarea></label><div class="row" style="margin-top:12px"><button id="cancelBtn">ביטול</button><button id="saveBtn" class="primary">שמירה</button></div></div></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/esri-leaflet@3.0.19/dist/esri-leaflet.js"></script>
+<script>
+(function(){'use strict';
+const NATIONAL_URL='https://services1.arcgis.com/hWUp5lYOh3Fi9WoQ/arcgis/rest/services/GvulotShputRashuyotVaadim/FeatureServer/0';
+const YOSH_SERVICE='https://tiles-eu1.arcgis.com/DI4iI0B7NY22mpeS/arcgis/rest/services/%D7%9E%D7%A2%D7%A8%D7%9B%D7%AA_%D7%92%D7%99%D7%90%D7%95%D7%92%D7%A8%D7%A4%D7%99%D7%AA_%D7%99%D7%95%D7%A9_%D7%A6%D7%99%D7%91%D7%95%D7%A8%D7%99%D7%AA_WTL1/MapServer';
+const YOSH_URL=YOSH_SERVICE+'/18';
+const map=L.map('map',{minZoom:7,maxZoom:14,zoomControl:true,preferCanvas:true,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false}).setView([31.75,35.05],8);
+L.control.scale({imperial:false}).addTo(map);
+const israelPane=map.createPane('israelPane');israelPane.style.zIndex=410;const yoshPane=map.createPane('yoshPane');yoshPane.style.zIndex=420;const petPane=map.createPane('petPane');petPane.style.zIndex=700;
+let israelLayer=null,yoshLayer=null,selectedTown='',selectedPetKey='',records=loadRecords(),markers=[],townCache={};
+const $=id=>document.getElementById(id), status=$('status');
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function normalize(o){const out={};Object.entries(o||{}).forEach(([k,v])=>out[k]=Array.isArray(v)?v:[v]);return out}
+function loadRecords(){try{const a=localStorage.getItem('pettingZooRecordsV4')||localStorage.getItem('pettingZooRecordsV3')||localStorage.getItem('pettingZooRecords');return normalize(a?JSON.parse(a):{})}catch(e){return {}}}
+function saveRecords(){try{localStorage.setItem('pettingZooRecordsV4',JSON.stringify(records))}catch(e){alert('לא ניתן לשמור בדפדפן. השתמשי בייצוא.')}}
+function townRecords(t){return Array.isArray(records[t])?records[t]:(records[t]?[records[t]]:[])}
+function allRecords(){const out=[];Object.entries(records).forEach(([town,a])=>townRecords(town).forEach((r,i)=>out.push({...r,town,_index:i})));return out}
+function recordNames(town){return townRecords(town).map(r=>r.name).join(' · ')}
+function isValidTown(n){return n&&n!=='יישוב'&&n!=='שטח כללי'}
+function israelTownName(p){return String((p||{}).Vaad_Heb||'').trim()||String((p||{}).Muni_Heb||'').trim()||String((p||{}).Vaad_Eng||'').trim()||String((p||{}).Muni_Eng||'').trim()}
+function yoshTownName(p){return String((p||{}).NAME_NAME||'').trim()}
+function styleIsrael(f){const n=israelTownName(f.properties),has=townRecords(n).length>0;return selectedTown===n?{color:'#001f43',weight:4.5,fillColor:'#8fc9ea',fillOpacity:.93}:has?{color:'#00547f',weight:3.2,fillColor:'#b9dfef',fillOpacity:.9}:{color:'#053a67',weight:2.2,fillColor:'#fff',fillOpacity:.68}}
+function styleYosh(f){const n=yoshTownName(f.properties),has=townRecords(n).length>0;return selectedTown===n?{color:'#002f52',weight:4.5,fillColor:'#8fc9ea',fillOpacity:.93}:has?{color:'#00547f',weight:3.1,fillColor:'#b9dfef',fillOpacity:.88}:{color:'#0a5277',weight:1.8,fillColor:'#d8edf8',fillOpacity:.28}}
+function updateSide(){const arr=townRecords(selectedTown);$('selectedBox').innerHTML=selectedTown?'<strong>'+esc(selectedTown)+'</strong><br>'+ (arr.length?arr.map(r=>'🐾 <b>'+esc(r.name)+'</b> <span class="badge">'+esc(r.kind||'פינת חי')+'</span>').join('<br>'):'אין עדיין פינת חי שהוזנה כאן.'):'לחצי על יישוב או על 🐾 כדי לבחור.'}
+function restyle(){if(israelLayer)israelLayer.setStyle(styleIsrael);if(yoshLayer)yoshLayer.setStyle(styleYosh)}
+function selectTown(town,zoomTo,latlng,bounds){if(!isValidTown(town))return;selectedTown=town;updateSide();restyle();renderRecords();renderPets();if(zoomTo){if(bounds)map.fitBounds(bounds,{animate:false,padding:[25,25],maxZoom:13});else if(latlng)map.setView(latlng,13,{animate:false})}}
+function popupFor(town,r){return '<strong>'+esc(town)+'</strong><br><b>'+esc(r.name)+'</b><br><span class="badge">'+esc(r.kind||'פינת חי')+'</span>'+(r.animals?'<br>🐾 '+esc(r.animals):'')+(r.address?'<br>📍 '+esc(r.address):'')+(r.contact?'<br>☎️ '+esc(r.contact):'')+(r.notes?'<br>📝 '+esc(r.notes):'')}
+function showPetInSide(town,idx){const a=townRecords(town),r=a[idx];if(!r)return;$('selectedBox').innerHTML='<strong>'+esc(town)+'</strong>'+a.map((x,i)=>'<div style="padding:7px 0;border-top:1px solid #e0e9ef;background:'+(i===idx?'#eef8fd':'transparent')+'"><b>🐾 '+esc(x.name)+'</b><br><span class="badge">'+esc(x.kind||'פינת חי')+'</span>'+(x.animals?'<br>🐾 '+esc(x.animals):'')+(x.address?'<br>📍 '+esc(x.address):'')+(x.contact?'<br>☎️ '+esc(x.contact):'')+(x.notes?'<br>📝 '+esc(x.notes):'')+'</div>').join('')}
+function centroid(f){const pts=[];function walk(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(walk)}walk(f.geometry.coordinates);if(!pts.length)return null;let x=0,y=0;pts.forEach(p=>{x+=p[0];y+=p[1]});return [y/pts.length,x/pts.length]}
+function findLoadedTown(town){let found=null;[israelLayer,yoshLayer].forEach(layer=>{if(!layer||found)return;layer.eachFeature(l=>{if(found)return;const n=l._townName||'';if(n===town)found=l})});return found}
+function renderPets(){markers.forEach(m=>map.removeLayer(m));markers=[];const groups={};allRecords().forEach(r=>(groups[r.town]??=[]).push(r));Object.entries(groups).forEach(([town,arr])=>{const loaded=findLoadedTown(town);if(loaded){addMarkersAt(town,arr,loaded.getBounds().getCenter());}else if(townCache[town]){addMarkersAt(town,arr,townCache[town]);}else{locateTownForPets(town,arr)}})}
+function addMarkersAt(town,arr,c){if(!c)return;const n=arr.length;arr.forEach((r,i)=>{const a=2*Math.PI*i/Math.max(1,n),rad=n===1?0:.012+Math.min(.022,.007*n);const pos=L.latLng(c.lat+Math.sin(a)*rad,c.lng+Math.cos(a)*rad);const key=town+'|'+i;const m=L.marker(pos,{pane:'petPane',icon:L.divIcon({className:'',html:'<div class="pet-icon '+(selectedPetKey===key?'selected':'')+'">🐾</div>',iconSize:[38,38],iconAnchor:[19,19]}),title:r.name});m.on('click',()=>{selectedPetKey=key;selectTown(town,false,pos);showPetInSide(town,i);m.bindPopup(popupFor(town,r),{autoPan:true}).openPopup();renderPets()});m.addTo(map);markers.push(m)})}
+function locateTownForPets(town,arr){const fieldQ=town.replace(/'/g,"''");const q1=L.esri.query({url:NATIONAL_URL}).where("Muni_Heb='"+fieldQ+"' OR Vaad_Heb='"+fieldQ+"'").returnGeometry(true).limit(3);q1.run((err,fc)=>{if(!err&&fc?.features?.length){const c=centroid(fc.features[0]);if(c){townCache[town]=L.latLng(c[0],c[1]);addMarkersAt(town,arr,townCache[town]);return}}const q2=L.esri.query({url:YOSH_URL}).where("NAME_NAME='"+fieldQ+"'").returnGeometry(true).limit(3);q2.run((e2,f2)=>{if(!e2&&f2?.features?.length){const c=centroid(f2.features[0]);if(c){townCache[town]=L.latLng(c[0],c[1]);addMarkersAt(town,arr,townCache[town])}}})})}
+function renderRecords(){const rs=allRecords().sort((a,b)=>(a.town+' '+a.name).localeCompare(b.town+' '+b.name,'he'));$('recordCount').textContent=rs.length+' רשומות';$('records').innerHTML='';if(!rs.length){$('records').innerHTML='<div class="empty">אין רשומות להצגה.</div>';return}rs.forEach(r=>{const d=document.createElement('div');d.className='record';d.innerHTML='<div class="record-title">🐾 '+esc(r.town)+'</div><div><b>'+esc(r.name)+'</b> <span class="badge">'+esc(r.kind||'פינת חי')+'</span></div><div class="small">'+esc(r.animals||'')+'</div><div class="row" style="margin-top:6px"><button class="edit">עריכה</button><button class="danger del">מחיקה</button></div>';d.querySelector('.edit').onclick=()=>openForm('edit',r.town,r._index);d.querySelector('.del').onclick=()=>{if(!confirm('למחוק את '+r.name+' ב'+r.town+'?'))return;const a=townRecords(r.town);a.splice(r._index,1);if(a.length)records[r.town]=a;else delete records[r.town];saveRecords();renderRecords();renderPets();restyle()};$('records').appendChild(d)})}
+function openForm(mode,town,idx){selectedTown=town;updateSide();const r=idx==null?{}:(townRecords(town)[idx]||{});$('dlgTitle').textContent=mode==='edit'?'עריכת פינת חי':'הוספת פינת חי';$('townForForm').textContent='יישוב: '+town;$('name').value=r.name||'';$('kind').value=r.kind||'פינת חי';$('animals').value=r.animals||'';$('address').value=r.address||'';$('contact').value=r.contact||'';$('notes').value=r.notes||'';$('saveBtn').dataset.town=town;$('saveBtn').dataset.index=idx==null?'':idx;$('modal').classList.add('open');$('name').focus()}
+function closeForm(){$('modal').classList.remove('open')}
+function searchQuery(q){$('results').innerHTML='';if(!q)return;const add=(label,fn)=>{const b=document.createElement('button');b.type='button';b.className='result';b.textContent=label;b.onclick=fn;$('results').appendChild(b)};allRecords().filter(r=>r.name.includes(q)||r.town.includes(q)).forEach((r,i)=>add('🐾 '+r.name+' · '+r.town,()=>{selectTown(r.town,true);showPetInSide(r.town,r._index)}));let pending=2;
+function done(){pending--;if(pending===0&&!$('results').children.length)$('results').innerHTML='<div class="empty">לא נמצאה תוצאה.</div>'}
+const qi=L.esri.query({url:NATIONAL_URL}).where("Muni_Heb LIKE '%"+q.replace(/'/g,"''")+"%' OR Vaad_Heb LIKE '%"+q.replace(/'/g,"''")+"%'").returnGeometry(true).limit(25);qi.run((err,fc)=>{if(!err&&fc?.features)fc.features.forEach(f=>{const n=israelTownName(f.properties);if(!isValidTown(n))return;const temp=L.geoJSON(f),b=temp.getBounds(),c=centroid(f);add('📍 '+n,()=>{selectTown(n,true,c?L.latLng(c[0],c[1]):null,b)})});done()});
+const qy=L.esri.query({url:YOSH_URL}).where("NAME_NAME LIKE '%"+q.replace(/'/g,"''")+"%'").returnGeometry(true).limit(25);qy.run((err,fc)=>{if(!err&&fc?.features)fc.features.forEach(f=>{const n=yoshTownName(f.properties);if(!isValidTown(n))return;const temp=L.geoJSON(f),b=temp.getBounds(),c=centroid(f);add('📍 '+n+' · יהודה ושומרון',()=>{selectTown(n,true,c?L.latLng(c[0],c[1]):null,b)})});done()})}
+$('search').oninput=e=>{const q=e.target.value.trim();if(q.length<1){$('results').innerHTML='';return}searchQuery(q)};
+$('fitBtn').onclick=()=>map.fitBounds([[29.2,34.15],[33.45,36.15]],{animate:false,padding:[18,18]});$('showYoshBtn').onclick=()=>map.fitBounds([[31.35,34.85],[32.65,35.65]],{animate:false,padding:[18,18]});$('clearBtn').onclick=()=>{selectedTown='';selectedPetKey='';updateSide();restyle();renderPets()};$('addBtn').onclick=()=>{if(!selectedTown)return alert('קודם בחרי יישוב.');openForm('add',selectedTown,null)};
+$('closeBtn').onclick=closeForm;$('cancelBtn').onclick=closeForm;$('modal').onclick=e=>{if(e.target===$('modal'))closeForm()};
+$('saveBtn').onclick=()=>{const town=$('saveBtn').dataset.town;if(!town)return;const r={name:$('name').value.trim(),kind:$('kind').value,animals:$('animals').value.trim(),address:$('address').value.trim(),contact:$('contact').value.trim(),notes:$('notes').value.trim()};if(!r.name)return alert('נא להזין שם פינת החי.');const a=townRecords(town),idx=$('saveBtn').dataset.index;if(idx==='')a.push(r);else a[+idx]=r;records[town]=a;saveRecords();closeForm();selectTown(town,false)};
+$('exportBtn').onclick=()=>{const b=new Blob([JSON.stringify(records,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='petting-zoo-records.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)};
+$('exportXlsxBtn').onclick=()=>{const rows=allRecords().map(r=>({יישוב:r.town,'שם פינת החי':r.name,'סוג המקום':r.kind,'בעלי חיים':r.animals,'כתובת':r.address,'טלפון / אתר':r.contact,'הערות':r.notes}));if(!rows.length)return alert('אין נתונים לייצוא.');const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'פינות חי');XLSX.writeFile(wb,'petting-zoo-records.xlsx')};
+$('importJson').onchange=e=>{const f=e.target.files?.[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{try{records=normalize(JSON.parse(fr.result));saveRecords();renderRecords();renderPets();restyle();alert('הנתונים יובאו בהצלחה.')}catch(_){alert('קובץ JSON אינו תקין.')}};fr.readAsText(f);e.target.value=''};
+$('importXlsx').onchange=e=>{const f=e.target.files?.[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{try{const wb=XLSX.read(fr.result,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''}),pick=(o,ks)=>{const k=Object.keys(o).find(k=>ks.includes(String(k).trim().toLowerCase()));return k?o[k]:''};let add=0;rows.forEach(o=>{const town=String(pick(o,['יישוב','שם יישוב','town','locality'])).trim(),name=String(pick(o,['שם פינת החי','שם','name','petting zoo'])).trim();if(!town||!name)return;const r={name,kind:String(pick(o,['סוג המקום','סוג','kind','type'])).trim()||'פינת חי',animals:String(pick(o,['בעלי חיים','animals'])).trim(),address:String(pick(o,['כתובת','address'])).trim(),contact:String(pick(o,['טלפון / אתר','טלפון','אתר','contact'])).trim(),notes:String(pick(o,['הערות','notes'])).trim()};if(!records[town])records[town]=[];records[town].push(r);add++});saveRecords();renderRecords();renderPets();restyle();alert('נוספו '+add+' רשומות.')}catch(_){alert('לא הצלחתי לקרוא את קובץ ה-Excel.')}};fr.readAsArrayBuffer(f);e.target.value=''};
 
-הקבצים הדרושים:
-1. index.html
-2. all_municipalities.geojson
+function init(){if(!window.L||!L.esri){status.innerHTML='⚠️ ספריית המפה לא נטענה.';return}
+try{
+  if(L.esri.Support)L.esri.Support.cors=true;
+  status.innerHTML='⏳ טוענת גבולות ישראל…';
+  israelLayer=L.esri.featureLayer({url:NATIONAL_URL,pane:'israelPane',renderer:L.canvas(),useCors:false,fetchAllFeatures:false,minZoom:7,maxZoom:14,style:styleIsrael});
+  israelLayer.on('createfeature',e=>{const t=israelTownName(e.feature.properties);e.layer._townName=t;if(isValidTown(t))e.layer.bindTooltip(t,{sticky:true,direction:'top',opacity:1,className:'town-tip'});e.layer.on('click',()=>{if(isValidTown(t))selectTown(t,true,null,e.layer.getBounds())})});
+  israelLayer.on('load',()=>{status.innerHTML='✅ שכבת גבולות ישראל פעילה.';restyle();renderPets()});
+  israelLayer.on('requesterror',()=>{status.innerHTML='⚠️ גבולות ישראל לא נטענו. נסי לרענן את הדפדפן. פינות החי והחיפוש עדיין זמינים.'});
+  israelLayer.addTo(map);
 
-את קובץ הגבולות all_municipalities.geojson יש להוריד מהמאגר:
-https://github.com/tzagim/geojson-israel
-שם הקובץ: all_municipalities.geojson
-
-לאחר מכן:
-1. צרי Repository חדש ב-GitHub.
-2. העלי אליו את index.html ואת all_municipalities.geojson.
-3. היכנסי ל-Settings > Pages.
-4. תחת Build and deployment בחרי Deploy from a branch.
-5. בחרי main ואת / (root), ואז Save.
-6. GitHub יציג את כתובת האתר לאחר הפרסום.
-
-הערה חשובה:
-הנתונים של פינות החי נשמרים בדפדפן. כדי להעביר את 25 הרשומות למחשב/אתר החדש, השתמשי בייבוא Excel או JSON בתוך המפה.
+  yoshLayer=L.esri.featureLayer({url:YOSH_URL,pane:'yoshPane',renderer:L.canvas(),useCors:false,fetchAllFeatures:false,minZoom:7,maxZoom:14,style:styleYosh});
+  yoshLayer.on('createfeature',e=>{const t=yoshTownName(e.feature.properties);e.layer._townName=t;if(isValidTown(t))e.layer.bindTooltip(t,{sticky:true,direction:'top',opacity:1,className:'town-tip'});e.layer.on('click',()=>{if(isValidTown(t))selectTown(t,true,null,e.layer.getBounds())})});
+  yoshLayer.on('load',()=>{restyle();renderPets()});
+  yoshLayer.on('requesterror',()=>console.warn('YOSH request failed'));
+  yoshLayer.addTo(map);
+}catch(e){status.innerHTML='⚠️ שגיאה בהפעלת שכבות המפה: '+esc(e.message||e)}
+map.fitBounds([[29.2,34.15],[33.45,36.15]],{animate:false,padding:[18,18]});renderRecords();renderPets();
+}
+init();window.addEventListener('resize',()=>map.invalidateSize());
+})();
+</script></body></html>
