@@ -63,6 +63,15 @@ const ISRAEL_BOUNDS=L.latLngBounds([29.35,34.20],[33.55,35.95]);
 const map=L.map('map',{preferCanvas:true,zoomControl:true,minZoom:7,maxZoom:13,scrollWheelZoom:true,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false,zoomSnap:0.25}).fitBounds(ISRAEL_BOUNDS,{padding:[12,12],maxZoom:8});
 L.control.scale({imperial:false}).addTo(map);
 const canvasRenderer=L.canvas({padding:.15});
+  const firebaseConfig = {
+  apiKey: "AIzaSyDJb15UocXbAVMxUqBviQsjJ9UQH1qucEg",
+  authDomain: "pinot-hai.firebaseapp.com",
+  databaseURL: "https://pinot-hai-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "pinot-hai",
+  storageBucket: "pinot-hai.firebasestorage.app",
+  messagingSenderId: "196982893878",
+  appId: "1:196982893878:web:fcab66456578fed4dd1797"
+};
 // ===== חיבור לאחסון ענן (Firebase Realtime Database) =====
 // יש למלא כאן את הפרטים שמתקבלים ביצירת פרויקט Firebase (ראו README).
 // כל עוד apiKey נשאר "YOUR_API_KEY", האתר ימשיך לעבוד רגיל עם שמירה מקומית בלבד (ללא סנכרון בין מכשירים).
